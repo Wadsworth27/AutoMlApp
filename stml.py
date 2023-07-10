@@ -27,13 +27,13 @@ class STMLRunner:
                 if st.button("Use Redwine Quality Dataset"):
                     st.session_state["create_data"] = pd.read_csv("winequality-red.csv")
                     st.session_state["target"] = "quality"
-                    st.session_state["sample_used"] = True
+                    st.session_state["regression_sample_used"] = True
             with sub_col2:
                 st.write("Classification")
                 if st.button("Use Iris Data Set"):
                     st.session_state["create_data"] = pd.read_csv("iris.csv")
                     st.session_state["target"] = "Species"
-                    st.session_state["sample_used"] = True
+                    st.session_state["classification_sample_used"] = True
 
             if "create_data" in st.session_state:
                 df = st.session_state["create_data"]
@@ -89,6 +89,14 @@ class STMLRunner:
             "Create a new ML Model.",
             ["Create Regression Model", "Create Classification Model"],
         )
+        if "regression_sample_used" in st.session_state:
+            st.info(
+                "Because you used the Wine Sample data, you should select regression here."
+            )
+        if "classification_sample_used" in st.session_state:
+            st.info(
+                "Because you used the Iris Sample data, you should select clasification here"
+            )
         if st.button("What's the difference?"):
             st.info(
                 "Regression helps predict a continuous quantity(like a house price), classification predicts discrete class labels(like a type of flower)"
@@ -110,7 +118,7 @@ class STMLRunner:
                     compare_df = regression.pull()
                     st.dataframe(compare_df)
                     st.info("This is the best model")
-                    best_model
+                    st.write(best_model)
                     st.write(
                         "Click here to see sample predictions on the loaded data. You can predict on additional data or download the model in the next steps."
                     )
