@@ -18,6 +18,8 @@ class STMLRunner:
         with col1:
             file = st.file_uploader("Upload your Dataset here.")
             if file:
+                st.session_state["regression_sample_used"] = False
+                st.session_state["classification_sample_used"] = False
                 df = pd.read_csv(file)
                 st.session_state["create_data"] = df
             st.write("Or use a sample dataset below:")
@@ -28,12 +30,16 @@ class STMLRunner:
                     st.session_state["create_data"] = pd.read_csv("winequality-red.csv")
                     st.session_state["target"] = "quality"
                     st.session_state["regression_sample_used"] = True
+                    if "classification_sample_used" in st.session_state:
+                        del st.session_state["classification_sample_used"]
             with sub_col2:
                 st.write("Classification")
                 if st.button("Use Iris Data Set"):
                     st.session_state["create_data"] = pd.read_csv("iris.csv")
                     st.session_state["target"] = "Species"
                     st.session_state["classification_sample_used"] = True
+                    if "regression_sample_used" in st.session_state:
+                        del st.session_state["regression_sample_used"]
 
             if "create_data" in st.session_state:
                 df = st.session_state["create_data"]
@@ -102,7 +108,9 @@ class STMLRunner:
                 "Regression helps predict a continuous quantity(like a house price), classification predicts discrete class labels(like a type of flower)"
             )
         if model_build_load == "Create Regression Model":
+            st.session_state["build_display"] = False
             if "create_data" in st.session_state:
+                st.session_state["build_display"] = True
                 df = st.session_state["create_data"].copy()
                 if st.button("Setup and run Experiments"):
                     st.info("These are the ML experiment settings")
@@ -110,20 +118,36 @@ class STMLRunner:
                         df, target=st.session_state["target"], verbose=False
                     )
                     setup_df = regression.pull()
+                    st.session_state["setup_df"] = setup_df
                     st.dataframe(setup_df)
-                    st.info("Experiments running, this may take several minutes.")
+                    st.write("Experiments running, this may take a few minutes")
                     best_model = regression.compare_models()
                     st.session_state["best_model"] = best_model
                     st.session_state["model_type"] = "regression"
                     compare_df = regression.pull()
+                    st.session_state["compare_df"] = compare_df
                     st.dataframe(compare_df)
-                    st.info("This is the best model")
-                    st.write(best_model)
+                if (
+                    "setup_df" in st.session_state
+                    and not st.session_state["build_display"]
+                ):
+                    st.dataframe(st.session_state["setup_df"])
+                if (
+                    "setup_df" in st.session_state
+                    and not st.session_state["build_display"]
+                ):
+                    st.dataframe(st.session_state["compare_df"])
+                if "best_model" in st.session_state:
                     st.write(
                         "Click here to see sample predictions on the loaded data. You can predict on additional data or download the model in the next steps."
                     )
-                    st.write("Sample predictions:")
-                    st.dataframe(regression.predict_model(best_model, df).head())
+                    if st.button("Sample predictions"):
+                        st.write("Sample predictions:")
+                        st.dataframe(
+                            regression.predict_model(
+                                st.session_state["best_model"], df
+                            ).head()
+                        )
                     try:
                         regression.plot_model(
                             best_model, plot="pipeline", display_format="streamlit"
@@ -145,28 +169,47 @@ class STMLRunner:
                     except:
                         pass
         if model_build_load == "Create Classification Model":
+            st.session_state["build_display"] = False
             if "create_data" in st.session_state:
-                df = st.session_state["create_data"]
+                st.session_state["build_display"] = True
+                df = st.session_state["create_data"].copy()
                 if st.button("Setup and run Experiments"):
                     st.info("These are the ML experiment settings")
                     classification.setup(
                         df, target=st.session_state["target"], verbose=False
                     )
                     setup_df = classification.pull()
+                    st.session_state["setup_df"] = setup_df
+                    st.info("These are the ML experiment settings")
                     st.dataframe(setup_df)
-                    st.info("Experiments running, this may take several minutes.")
+                    st.write("Experiments running, this may take a few minutes")
                     best_model = classification.compare_models()
                     st.session_state["best_model"] = best_model
                     st.session_state["model_type"] = "classification"
                     compare_df = classification.pull()
-                    st.info("This is the best model")
+                    st.session_state["compare_df"] = compare_df
                     st.dataframe(compare_df)
-                    st.session_state["best_model"] = best_model
+                if (
+                    "setup_df" in st.session_state
+                    and not st.session_state["build_display"]
+                ):
+                    st.dataframe(st.session_state["setup_df"])
+                if (
+                    "setup_df" in st.session_state
+                    and not st.session_state["build_display"]
+                ):
+                    st.dataframe(st.session_state["compare_df"])
+                if "best_model" in st.session_state:
                     st.write(
                         "Click here to see sample predictions on the loaded data. You can predict on additional data or download the model in the next steps."
                     )
                     if st.button("Sample predictions"):
-                        st.dataframe(classification.predict_model(best_model, df))
+                        st.write("Sample predictions:")
+                        st.dataframe(
+                            classification.predict_model(
+                                st.session_state["best_model"], df
+                            ).head()
+                        )
                     classification.plot_model(
                         best_model, plot="learning", display_format="streamlit"
                     )
@@ -201,16 +244,16 @@ class STMLRunner:
             if "best_model" in st.session_state:
                 df = st.session_state["create_data"]
                 st.info("Displaying first 5 rows")
-                st.dataframe(st.session_state["create_data"].head())
+                st.dataframe(df.head())
                 if st.button("Predict"):
                     best_model = st.session_state["best_model"]
                     st.write(
                         f"Predicting for Target Variable {st.session_state['target']}"
                     )
                     if st.session_state["model_type"] == "regression":
-                        regression.setup(data=df, target=st.session_state["target"])
                         st.session_state["prediction_df"] = regression.predict_model(
-                            best_model, df
+                            st.session_state["best_model"],
+                            st.session_state["create_data"],
                         )
                     if st.session_state["model_type"] == "classification":
                         classification.setup(data=df, target=st.session_state["target"])
